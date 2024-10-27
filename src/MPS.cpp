@@ -10,99 +10,69 @@ struct Chord {
     int end;
     // bool switched = false;
 };
-void readChords(ifstream& input);
+
+void readChords(ifstream& input, vector<int>& chords);
 void printMemo(vector<vector<int>>& memo);
 void sortSubset(vector<Chord>& subset);
 int partition(vector<Chord>& subset, int low, int high);
 void quickSort(vector<Chord>& subset, int low, int high);
-vector<Chord> chords;
 
 
-int mps(int i, int j, vector<Chord>& subset, vector<vector<int>>& memo) {
-    int maxCount = 0;
-    int chordIndex = -1;
-
-    if (i >= j) {
-        memo[i][j] = 0;
-        return 0;
-    }
-    
-    if (memo[i][j] != -1) {
-        return memo[i][j];
-    }
-
-    for (int h = 0; h < chords.size(); h++){     
-        int k = -1;  
-        if (j == chords[h].start){
-            k = chords[h].end;
-        } else if (j == chords[h].end){
-            k = chords[h].start;
-        } else {
-            continue;
+void mps(vector<int> chords, vector<vector<int>>& memo, int size) {
+    for(int l = 1; l < size; l++) {
+    	
+        if (l % 1000 == 0) {
+            cout << "l = " << l << endl;
         }
 
-        if (k == i) {
-            maxCount = mps(i + 1, j - 1, subset, memo) + 1;
-            chordIndex = h;
-        } else if (k < i || k > j) {
-            maxCount = mps(i, j - 1, subset, memo);
-        } else if (k > i && k < j) {
-            int left = mps(i, j - 1, subset, memo);
-            int right = mps(i, k - 1, subset, memo) + mps(k + 1, j - 1, subset, memo) + 1;
-            if (left > right) {
-                maxCount = left;
-            } else {
-                maxCount = right;
-                chordIndex = h;
-            }
-        }
-        break;
+        for(int i = 0; i < size - l; i++) {
+	    
+        int j = i + l;
+	    int k = chords[j];	// the starting point when the ending point is j
+
+	    if(k < i || k > j) {
+	        memo[i][j] = memo[i][j - 1];
+	    } else if(k > i && k < j) {
+	    	memo[i][j] = max(memo[i][k - 1] + memo[k + 1][j - 1] + 1, memo[i][j - 1]);
+	    } else if(k == i) {
+	    	memo[i][j] = memo[i + 1][j - 1] + 1;
+	    } else {
+	    	continue;
+	    }
+	}
     }
 
 
-    memo[i][j] = maxCount;
-    // if (chordIndex != -1) {
-    //     bool found = false;
-    //     for (const Chord& chord : subset) {
-    //         if (chord.start == chords[chordIndex].start && chord.end == chords[chordIndex].end) {
-    //             // cout << "Found duplicate chord: " << chord.start << " " << chord.end << endl;
-    //             found = true;
-    //             break;
-    //         }
-    //     }
-    //     if (!found) {
-    //         subset.push_back(chords[chordIndex]);
-    //     }
-    // }
-    return maxCount;
 }
-
 
 
 int main() {
 
     int n;
 
-    ifstream input("./inputs/60000.in");    
+    ifstream input("./inputs/100000.in");    
     input >> n;    
     cout << "Number of points: " << n << endl;
     
-    readChords(input);
+    vector<int> chords(n);
+
+    readChords(input, chords);
     
-    vector<Chord> subset;
+    // for(int i = 0; i < n; i++) {
+    //     cout << chords[i] << " ";
+    // }
+
     vector<vector<int>> memo(n, vector<int>(n, -1));
-    int maxCount = mps(0, n - 1, subset, memo);
+
+    for(int i = 0; i < n; i++) {
+        memo[i][i] = 0;
+    }
+
+    mps(chords, memo, n);
+
 
     // printMemo(memo);
-
-    cout << maxCount << endl;
-    sortSubset(subset);
-
-    cout << subset.size() << endl;
-
-    // for (int i = 0; i < subset.size(); i++) {
-    //     cout << subset[i].start << " " << subset[i].end << endl;
-    // }
+    cout << memo[0][n-1] << endl;
 
     return 0;
 }
@@ -111,40 +81,6 @@ int main() {
 
 
 
-
-
-void readChords(ifstream& input) {
-    while (true) {
-        int start, end;
-        input >> start;
-        // bool switched = false;
-        // Check for termination condition
-        if (start == 0) {
-            if (input.peek() == '\n' || input.eof()) {
-                break;  // Terminating condition
-            } else {
-                input >> end;
-                // if (start > end) {
-                //     swap(start, end);
-                //     switched = true;
-                // }
-                // // chords.push_back({start, end, switched});
-                chords.push_back({start, end});
-                continue;  // Continue to read the next chord
-            }
-        }
-        // Read the end value only if the start is not 0
-        input >> end;
-
-        // if (start > end) {
-        //     swap(start, end);
-        //     switched = true;
-        // }
-        // chords.push_back({start, end, switched});
-        chords.push_back({start, end});
-        // cout << "Read chord: " << start << " " << end << endl;  // Debugging output
-    }
-}
 void printMemo(vector<vector<int>>& memo) {
     cout << "Memoization Table:" << endl;
     cout << "    ";
@@ -160,6 +96,7 @@ void printMemo(vector<vector<int>>& memo) {
         cout << endl;
     }
 }
+
 
 void quickSort(vector<Chord>& subset, int low, int high) {
     if (low < high) {
@@ -186,4 +123,28 @@ void sortSubset(vector<Chord>& subset) {
     if (!subset.empty()) {
         quickSort(subset, 0, subset.size() - 1);
     }
+}
+
+void readChords(ifstream& input, vector<int>& chords) {
+    while (true) {
+        int head, tail;
+        input >> head;
+        // cout << "head: " << head << endl;
+        if (head == 0) {
+            if (input.peek() == '\n' || input.eof()) {
+                break;
+            } else {
+                input >> tail;
+                // cout << "tail: " << tail << endl;
+                chords[tail] = head;
+                chords[head] = tail;
+		        continue;  
+            }
+        }
+        input >> tail;
+        chords[tail] = head;
+        chords[head] = tail;
+        
+    }
+    //sortSubset(chords);
 }
